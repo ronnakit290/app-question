@@ -41,6 +41,7 @@ export default function AiSettingsModal({ onClose }: { onClose: () => void }) {
         baseUrl: s.baseUrl,
         model: s.model,
         secondsPerQuestion: s.secondsPerQuestion,
+        choicesPerQuestion: s.choicesPerQuestion,
         revealDelayMs: s.revealDelayMs,
         autoNext: s.autoNext,
       };
@@ -200,6 +201,28 @@ export default function AiSettingsModal({ onClose }: { onClose: () => void }) {
               />
             </Field>
           </div>
+
+          <Field
+            label="จำนวนตัวเลือกต่อข้อ"
+            hint="ใช้ตอน Generate คำถามชุดใหม่ ชุดที่สร้างไว้แล้วไม่เปลี่ยนตาม"
+          >
+            <div className="grid grid-cols-5 gap-2">
+              {[2, 3, 4, 5, 6].map((n) => (
+                <button
+                  key={n}
+                  onClick={() => patch({ choicesPerQuestion: n })}
+                  className={[
+                    "rounded-xl py-2.5 text-sm font-medium transition",
+                    s.choicesPerQuestion === n
+                      ? "bg-[var(--accent)] text-[var(--accent-ink)]"
+                      : "field text-[var(--muted)] hover:text-[var(--ink)]",
+                  ].join(" ")}
+                >
+                  {n}
+                </button>
+              ))}
+            </div>
+          </Field>
 
           <button
             onClick={() => patch({ autoNext: !s.autoNext })}

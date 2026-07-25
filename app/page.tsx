@@ -5,7 +5,7 @@ import NameForm from "./components/NameForm";
 import { useUserName } from "./hooks/useUserName";
 
 export default function Home() {
-  const { name, ready, saveName } = useUserName();
+  const { name, ready, saveName, clearName } = useUserName();
 
   if (!ready) {
     return (
@@ -25,7 +25,7 @@ export default function Home() {
 
   return (
     <main className="flex-1">
-      <Chat name={name} onChangeName={saveName} />
+      <Chat name={name} onChangeName={saveName} onLeave={clearName} />
     </main>
   );
 }

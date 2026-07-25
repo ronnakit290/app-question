@@ -43,6 +43,11 @@ export async function PUT(request: Request) {
       Math.max(0, Math.round(body.revealDelayMs)),
     );
   if (typeof body.autoNext === "boolean") patch.autoNext = body.autoNext;
+  if (typeof body.choicesPerQuestion === "number")
+    patch.choicesPerQuestion = Math.min(
+      6,
+      Math.max(2, Math.round(body.choicesPerQuestion)),
+    );
 
   const settings = saveAiSettings(patch);
 

@@ -1,7 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
-import type { ChatMessage, QuizState, StreamEvent } from "../lib/types";
+import type {
+  ChatMessage,
+  Participant,
+  QuizState,
+  StreamEvent,
+} from "../lib/types";
 import { randomId } from "../lib/uuid";
 
 const CLIENT_ID_KEY = "chat:clientId";
@@ -42,7 +47,7 @@ export type ChatStatus = "connecting" | "online" | "offline";
 export function useChat(name: string) {
   const clientId = useClientId();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [users, setUsers] = useState<string[]>([]);
+  const [users, setUsers] = useState<Participant[]>([]);
   const [status, setStatus] = useState<ChatStatus>("connecting");
   const [quiz, setQuiz] = useState<QuizState | null>(null);
 

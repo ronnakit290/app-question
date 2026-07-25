@@ -13,7 +13,7 @@ import {
   Play,
   Trash2,
 } from "lucide-react";
-import type { QuestionSet } from "../lib/types";
+import type { AiSettingsPublic, QuestionSet } from "../lib/types";
 
 const PRESETS = [
   { icon: Brain, label: "ความรู้รอบตัว", prompt: "คำถามความรู้รอบตัวทั่วไป ระดับกลาง สนุกๆ เล่นกับเพื่อน" },
@@ -38,6 +38,7 @@ export default function GenerateModal({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sets, setSets] = useState<QuestionSet[]>([]);
+  const [settings, setSettings] = useState<AiSettingsPublic | null>(null);
 
   const loadSets = () =>
     fetch("/api/question-sets")
@@ -47,6 +48,10 @@ export default function GenerateModal({
 
   useEffect(() => {
     void loadSets();
+    fetch("/api/ai/settings")
+      .then((r) => r.json())
+      .then((d: { settings: AiSettingsPublic }) => setSettings(d.settings))
+      .catch(() => {});
   }, []);
 
   const generate = async (start: boolean) => {
@@ -154,7 +159,14 @@ export default function GenerateModal({
           ))}
         </div>
 
-        <Field label={`จำนวนข้อ — ${count} ข้อ`}>
+        <Field
+          label={`จำนวนข้อ — ${count} ข้อ`}
+          hint={
+            settings
+              ? `ข้อละ ${settings.choicesPerQuestion} ตัวเลือก (แก้ได้ในเมนูตั้งค่า AI)`
+              : undefined
+          }
+        >
           <div className="flex items-center gap-3">
             <input
               type="range"

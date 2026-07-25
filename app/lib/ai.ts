@@ -43,12 +43,16 @@ export type GeneratedQuestion = {
   explain: string;
 };
 
-const SYSTEM = `คุณคือผู้ออกข้อสอบปรนัย ตอบกลับเป็น JSON เท่านั้น ห้ามมีข้อความอื่นหรือ markdown fence
+const systemPrompt = (choices: number) => `คุณคือผู้ออกข้อสอบปรนัย ตอบกลับเป็น JSON เท่านั้น ห้ามมีข้อความอื่นหรือ markdown fence
 รูปแบบ:
-{"title":"ชื่อชุดคำถามสั้นๆ","questions":[{"text":"โจทย์","choices":["ตัวเลือก1","ตัวเลือก2","ตัวเลือก3","ตัวเลือก4"],"answer":0,"explain":"เหตุผลสั้นๆ ว่าทำไมข้อนี้ถูก"}]}
+{"title":"ชื่อชุดคำถามสั้นๆ","questions":[{"text":"โจทย์","choices":[${Array.from(
+  { length: choices },
+  (_, i) => `"ตัวเลือก${i + 1}"`,
+).join(",")}],"answer":0,"explain":"เหตุผลสั้นๆ ว่าทำไมข้อนี้ถูก"}]}
 กติกา:
-- แต่ละข้อมี 4 ตัวเลือกเสมอ และมีคำตอบถูกเพียงข้อเดียว
-- "answer" คือ index (0-3) ของตัวเลือกที่ถูก และต้องกระจายตำแหน่งคำตอบให้หลากหลาย
+- แต่ละข้อมี ${choices} ตัวเลือกเสมอ และมีคำตอบถูกเพียงข้อเดียว
+- "answer" คือ index (0-${choices - 1}) ของตัวเลือกที่ถูก และต้องกระจายตำแหน่งคำตอบให้หลากหลาย
+- ตัวเลือกที่ผิดต้องดูสมเหตุสมผล ไม่ใช่ตัวเลือกหลอกที่ตัดทิ้งได้ทันที
 - ห้ามถามซ้ำ ห้ามใส่เลขข้อไว้ใน "text"
 - ใช้ภาษาเดียวกับที่ผู้ใช้ระบุในคำสั่ง ถ้าไม่ระบุให้ใช้ภาษาไทย`;
 
@@ -66,6 +70,7 @@ async function callModel(
   settings: AiSettings,
   apiKey: string,
   userPrompt: string,
+  system: string,
   signal?: AbortSignal,
 ): Promise<string> {
   const base = (settings.baseUrl || PROVIDERS[settings.provider].baseUrl).replace(
@@ -85,7 +90,7 @@ async function callModel(
       body: JSON.stringify({
         model: settings.model,
         max_tokens: 8000,
-        system: SYSTEM,
+        system,
         messages: [{ role: "user", content: userPrompt }],
       }),
     });
@@ -108,7 +113,7 @@ async function callModel(
       signal,
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        systemInstruction: { parts: [{ text: SYSTEM }] },
+        systemInstruction: { parts: [{ text: system }] },
         contents: [{ role: "user", parts: [{ text: userPrompt }] }],
         generationConfig: { responseMimeType: "application/json" },
       }),
@@ -134,7 +139,7 @@ async function callModel(
       model: settings.model,
       response_format: { type: "json_object" },
       messages: [
-        { role: "system", content: SYSTEM },
+        { role: "system", content: system },
         { role: "user", content: userPrompt },
       ],
     }),
@@ -153,12 +158,14 @@ export async function generateQuestions(opts: {
   count: number;
   signal?: AbortSignal;
 }): Promise<{ title: string; questions: GeneratedQuestion[] }> {
-  const userPrompt = `สร้างคำถามปรนัยจำนวน ${opts.count} ข้อ ตามโจทย์นี้:\n\n${opts.prompt}`;
+  const choices = Math.min(6, Math.max(2, opts.settings.choicesPerQuestion || 4));
+  const userPrompt = `สร้างคำถามปรนัยจำนวน ${opts.count} ข้อ ข้อละ ${choices} ตัวเลือก ตามโจทย์นี้:\n\n${opts.prompt}`;
 
   const raw = await callModel(
     opts.settings,
     opts.apiKey,
     userPrompt,
+    systemPrompt(choices),
     opts.signal,
   );
 
@@ -182,7 +189,7 @@ export async function generateQuestions(opts: {
     if (!text || choices.length < 2) continue;
     questions.push({
       text,
-      choices: choices.slice(0, 6),
+      choices: choices.slice(0, choices.length),
       answer: Number.isInteger(answer) && answer >= 0 && answer < choices.length ? answer : 0,
       explain: typeof q.explain === "string" ? q.explain.trim() : "",
     });

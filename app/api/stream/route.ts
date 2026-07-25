@@ -1,5 +1,6 @@
 import { currentPresence, subscribe } from "@/app/lib/bus";
 import type { StreamEvent } from "@/app/lib/types";
+import { syncExpected } from "@/app/lib/quiz";
 
 export const dynamic = "force-dynamic";
 
@@ -43,6 +44,8 @@ export async function GET(request: Request) {
         closed = true;
         clearInterval(heartbeat);
         unsubscribe();
+        // คนออกจากห้องแล้ว ควิซไม่ต้องรอคนนี้ตอบ
+        syncExpected();
         try {
           controller.close();
         } catch {}

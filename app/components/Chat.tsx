@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import NameForm from "./NameForm";
 import PlusMenu from "./PlusMenu";
+import Modal from "./Modal";
 import AiSettingsModal from "./AiSettingsModal";
 import GenerateModal from "./GenerateModal";
 import QuizPanel from "./QuizPanel";
@@ -12,6 +13,7 @@ import Scoreboard from "./Scoreboard";
 import { QUIZ_BOT_ID } from "../lib/quiz-shared";
 import {
   Bot,
+  LogOut,
   SendHorizontal,
   Settings2,
   SkipForward,
@@ -49,9 +51,11 @@ const statusLabel = {
 export default function Chat({
   name,
   onChangeName,
+  onLeave,
 }: {
   name: string;
   onChangeName: (name: string) => void;
+  onLeave: () => void;
 }) {
   const { messages, users, status, send, clientId, quiz, quizAction, answer } =
     useChat(name);
@@ -59,6 +63,7 @@ export default function Chat({
   const [editing, setEditing] = useState(false);
   const [modal, setModal] = useState<null | "settings" | "generate">(null);
   const [toast, setToast] = useState<string | null>(null);
+  const [leaving, setLeaving] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useViewportHeight();
@@ -130,16 +135,51 @@ export default function Chat({
             />
             <span className="truncate">
               {status === "online"
-                ? `ออนไลน์ ${users.length} คน${users.length ? ` · ${users.join(", ")}` : ""}`
+                ? `กำลังเชื่อมต่อ ${users.length} คน`
                 : statusLabel[status]}
             </span>
           </div>
         </div>
+        {/* คนที่กำลังเชื่อมต่ออยู่จริง */}
+        {users.length > 0 && (
+          <div className="hidden shrink-0 items-center sm:flex">
+            {users.slice(0, 5).map((u, i) => (
+              <span
+                key={u.clientId}
+                title={u.name}
+                style={{ marginLeft: i === 0 ? 0 : -8, zIndex: 10 - i }}
+                className={`flex h-7 w-7 items-center justify-center rounded-full ring-2 ring-white ${colorFor(
+                  u.clientId,
+                )} text-[10px] font-medium text-white`}
+              >
+                {u.name.charAt(0).toUpperCase()}
+              </span>
+            ))}
+            {users.length > 5 && (
+              <span
+                style={{ marginLeft: -8 }}
+                className="flex h-7 w-7 items-center justify-center rounded-full bg-black/[0.06] text-[10px] font-medium text-[var(--muted)] ring-2 ring-white"
+              >
+                +{users.length - 5}
+              </span>
+            )}
+          </div>
+        )}
+
         <button
           onClick={() => setEditing(true)}
           className="field shrink-0 rounded-full px-3.5 py-2 text-xs font-medium text-[var(--muted)] transition hover:text-[var(--ink)]"
         >
-          {name} · เปลี่ยนชื่อ
+          {name}
+        </button>
+
+        <button
+          onClick={() => setLeaving(true)}
+          aria-label="ออกจากห้อง"
+          title="ออกจากห้อง"
+          className="field flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[var(--faint)] transition hover:bg-[var(--bad-soft)] hover:text-[var(--bad)]"
+        >
+          <LogOut size={15} strokeWidth={1.75} />
         </button>
       </header>
 
@@ -318,6 +358,49 @@ export default function Chat({
         <div className="pointer-events-none fixed bottom-28 left-1/2 z-50 -translate-x-1/2 animate-[fadeUp_.2s_ease-out] rounded-full bg-[var(--ink)] px-4 py-2 text-[13px] text-white shadow-[var(--shadow-lg)]">
           {toast}
         </div>
+      )}
+
+      {leaving && (
+        <Modal
+          title="ออกจากห้อง"
+          subtitle="ระบบจะตัดการเชื่อมต่อและพากลับไปหน้ากรอกชื่อ ข้อความในห้องยังอยู่ครบ"
+          onClose={() => setLeaving(false)}
+          footer={
+            <div className="flex gap-3">
+              <button
+                onClick={() => setLeaving(false)}
+                className="field flex-1 rounded-xl px-4 py-3 text-sm font-medium text-[var(--muted)] transition hover:text-[var(--ink)]"
+              >
+                อยู่ต่อ
+              </button>
+              <button
+                onClick={onLeave}
+                className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-[var(--bad)] px-4 py-3 text-sm font-medium text-white transition hover:opacity-90"
+              >
+                <LogOut size={15} strokeWidth={2} />
+                ออกจากห้อง
+              </button>
+            </div>
+          }
+        >
+          <div className="flex items-center gap-3 rounded-xl bg-black/[0.025] px-4 py-3">
+            <span
+              className={`flex h-10 w-10 items-center justify-center rounded-full ${colorFor(
+                clientId || name,
+              )} text-sm font-medium text-white`}
+            >
+              {name.charAt(0).toUpperCase()}
+            </span>
+            <div className="min-w-0">
+              <div className="truncate text-sm font-medium text-[var(--ink)]">
+                {name}
+              </div>
+              <div className="text-[11px] text-[var(--muted)]">
+                กำลังเชื่อมต่ออยู่ {users.length} คนในห้องนี้
+              </div>
+            </div>
+          </div>
+        </Modal>
       )}
 
       {editing && (

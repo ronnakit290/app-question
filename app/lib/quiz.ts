@@ -302,6 +302,31 @@ export function stopQuiz() {
   broadcast();
 }
 
+/**
+ * เรียกเมื่อมีคนออกจากห้อง — ตัดคนที่หลุดไปแล้วออกจากรายชื่อที่ต้องรอ
+ * ถ้าคนที่เหลือตอบครบแล้วก็เดินหน้าเฉลยเลย ไม่ต้องรอหมดเวลา
+ */
+export function syncExpected() {
+  if (engine.phase !== "asking") return;
+
+  const online = new Set(participants().map((p) => p.clientId));
+  let changed = false;
+  for (const id of [...engine.expected.keys()]) {
+    if (!online.has(id) && !engine.answered.has(id)) {
+      engine.expected.delete(id);
+      changed = true;
+    }
+  }
+  if (!changed) return;
+
+  const everyoneAnswered =
+    engine.expected.size > 0 &&
+    [...engine.expected.keys()].every((id) => engine.answered.has(id));
+
+  if (everyoneAnswered) beginPrereveal();
+  else broadcast();
+}
+
 export function skipQuestion() {
   if (engine.phase === "asking" || engine.phase === "prereveal") reveal("ข้ามข้อนี้");
   else if (engine.phase === "reveal") nextQuestion();

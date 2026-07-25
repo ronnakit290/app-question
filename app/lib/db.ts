@@ -118,6 +118,7 @@ export const DEFAULT_AI_SETTINGS: AiSettings = {
   secondsPerQuestion: 30,
   revealDelayMs: 4000,
   autoNext: true,
+  choicesPerQuestion: 4,
 };
 
 function getRaw(key: string): string | null {

@@ -1,3 +1,8 @@
+export type Participant = {
+  clientId: string;
+  name: string;
+};
+
 export type ChatMessage = {
   id: string;
   clientId: string;
@@ -20,6 +25,8 @@ export type AiSettings = {
   revealDelayMs: number;
   /** ตอบถูกแล้วข้ามไปข้อถัดไปอัตโนมัติ */
   autoNext: boolean;
+  /** จำนวนตัวเลือกต่อข้อ (2–6) */
+  choicesPerQuestion: number;
 };
 
 export type AiSettingsPublic = AiSettings & { hasKey: boolean };
@@ -102,5 +109,5 @@ export type QuizState = {
 
 export type StreamEvent =
   | { type: "message"; message: ChatMessage }
-  | { type: "presence"; users: string[] }
+  | { type: "presence"; users: Participant[] }
   | { type: "quiz"; state: QuizState };
