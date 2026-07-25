@@ -1,6 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import type {
   ChatMessage,
   Participant,
@@ -50,6 +56,7 @@ export function useChat(name: string) {
   const [users, setUsers] = useState<Participant[]>([]);
   const [status, setStatus] = useState<ChatStatus>("connecting");
   const [quiz, setQuiz] = useState<QuizState | null>(null);
+  const sourceRef = useRef<EventSource | null>(null);
 
   const upsert = useCallback((incoming: ChatMessage) => {
     setMessages((prev) =>
@@ -81,6 +88,7 @@ export function useChat(name: string) {
     const source = new EventSource(
       `/api/stream?clientId=${encodeURIComponent(clientId)}&name=${encodeURIComponent(name)}`,
     );
+    sourceRef.current = source;
 
     source.onopen = () => setStatus("online");
     source.onerror = () => setStatus("offline");
@@ -95,6 +103,7 @@ export function useChat(name: string) {
     return () => {
       cancelled = true;
       source.close();
+      if (sourceRef.current === source) sourceRef.current = null;
     };
   }, [clientId, name, upsert]);
 
@@ -135,5 +144,32 @@ export function useChat(name: string) {
     [quizAction, clientId, name],
   );
 
-  return { messages, users, status, send, clientId, quiz, quizAction, answer };
+  /** ตัดการเชื่อมต่อทันที: ปิด SSE ฝั่ง client แล้วบอกเซิร์ฟเวอร์ให้ถอดออกจาก presence เลย */
+  const disconnect = useCallback(async () => {
+    sourceRef.current?.close();
+    sourceRef.current = null;
+    setStatus("offline");
+    setUsers([]);
+    if (!clientId) return;
+    try {
+      await fetch("/api/leave", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ clientId }),
+        keepalive: true,
+      });
+    } catch {}
+  }, [clientId]);
+
+  return {
+    messages,
+    users,
+    status,
+    send,
+    clientId,
+    quiz,
+    quizAction,
+    answer,
+    disconnect,
+  };
 }

@@ -36,20 +36,22 @@ export async function GET(request: Request) {
       write(": connected\n\n");
       send(currentPresence());
 
-      const unsubscribe = subscribe({ clientId, name, send });
+      let unsubscribe: (() => void) | null = null;
       const heartbeat = setInterval(() => write(": ping\n\n"), HEARTBEAT_MS);
 
       const cleanup = () => {
         if (closed) return;
         closed = true;
         clearInterval(heartbeat);
-        unsubscribe();
+        unsubscribe?.();
         // คนออกจากห้องแล้ว ควิซไม่ต้องรอคนนี้ตอบ
         syncExpected();
         try {
           controller.close();
         } catch {}
       };
+
+      unsubscribe = subscribe({ clientId, name, send, close: cleanup });
 
       request.signal.addEventListener("abort", cleanup);
     },

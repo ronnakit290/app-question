@@ -4,6 +4,8 @@ type Subscriber = {
   clientId: string;
   name: string;
   send: (event: StreamEvent) => void;
+  /** ปิด stream ฝั่งเซิร์ฟเวอร์ (ใส่โดย route ของ SSE) */
+  close?: () => void;
 };
 
 // Single in-process pub/sub hub. Survives dev hot reloads.
@@ -42,6 +44,21 @@ export function subscribe(sub: Subscriber): () => void {
     subscribers.delete(sub);
     publish(presence());
   };
+}
+
+/** ตัดสายของ clientId ทิ้งทันที (ใช้ตอนกด Leave) */
+export function disconnectClient(clientId: string): number {
+  let removed = 0;
+  for (const sub of [...subscribers]) {
+    if (sub.clientId !== clientId) continue;
+    subscribers.delete(sub);
+    removed++;
+    try {
+      sub.close?.();
+    } catch {}
+  }
+  if (removed) publish(presence());
+  return removed;
 }
 
 export function currentPresence() {

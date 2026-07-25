@@ -13,6 +13,7 @@ import Scoreboard from "./Scoreboard";
 import { QUIZ_BOT_ID } from "../lib/quiz-shared";
 import {
   Bot,
+  Loader2,
   LogOut,
   SendHorizontal,
   Settings2,
@@ -57,13 +58,23 @@ export default function Chat({
   onChangeName: (name: string) => void;
   onLeave: () => void;
 }) {
-  const { messages, users, status, send, clientId, quiz, quizAction, answer } =
-    useChat(name);
+  const {
+    messages,
+    users,
+    status,
+    send,
+    clientId,
+    quiz,
+    quizAction,
+    answer,
+    disconnect,
+  } = useChat(name);
   const [draft, setDraft] = useState("");
   const [editing, setEditing] = useState(false);
   const [modal, setModal] = useState<null | "settings" | "generate">(null);
   const [toast, setToast] = useState<string | null>(null);
   const [leaving, setLeaving] = useState(false);
+  const [leavingBusy, setLeavingBusy] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useViewportHeight();
@@ -90,6 +101,14 @@ export default function Chat({
     if (/^[A-F]$/.test(t)) return t.charCodeAt(0) - 65;
     if (/^[1-6]$/.test(t)) return Number(t) - 1;
     return null;
+  };
+
+  /** กด Leave = ตัดการเชื่อมต่อจริงก่อน แล้วค่อยกลับหน้ากรอกชื่อ */
+  const leaveRoom = async () => {
+    if (leavingBusy) return;
+    setLeavingBusy(true);
+    await disconnect();
+    onLeave();
   };
 
   const submit = () => {
@@ -363,7 +382,7 @@ export default function Chat({
       {leaving && (
         <Modal
           title="ออกจากห้อง"
-          subtitle="ระบบจะตัดการเชื่อมต่อและพากลับไปหน้ากรอกชื่อ ข้อความในห้องยังอยู่ครบ"
+          subtitle="ระบบจะตัดการเชื่อมต่อออกจากห้องทันที คนอื่นจะเห็นว่าคุณออฟไลน์ แล้วพากลับไปหน้ากรอกชื่อ"
           onClose={() => setLeaving(false)}
           footer={
             <div className="flex gap-3">
@@ -374,11 +393,16 @@ export default function Chat({
                 อยู่ต่อ
               </button>
               <button
-                onClick={onLeave}
-                className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-[var(--bad)] px-4 py-3 text-sm font-medium text-white transition hover:opacity-90"
+                onClick={() => void leaveRoom()}
+                disabled={leavingBusy}
+                className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-[var(--bad)] px-4 py-3 text-sm font-medium text-white transition hover:opacity-90 disabled:opacity-50"
               >
-                <LogOut size={15} strokeWidth={2} />
-                ออกจากห้อง
+                {leavingBusy ? (
+                  <Loader2 size={15} strokeWidth={2} className="animate-spin" />
+                ) : (
+                  <LogOut size={15} strokeWidth={2} />
+                )}
+                ตัดการเชื่อมต่อ
               </button>
             </div>
           }
