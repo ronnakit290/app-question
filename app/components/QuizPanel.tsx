@@ -103,6 +103,16 @@ export default function QuizPanel({
   /** ข้อนี้พลิกกระจกไหม — สุ่มจาก seed ของข้อ (ทุกคนเห็นเหมือนกัน) */
   const mirrored = fun.mirrorMode && hash(q?.id ?? "") % 3 === 0;
 
+  /**
+   * โจทย์เบลอ — ผูกกับเวลาที่ให้ตอบโดยตรง
+   * เริ่มข้อ = เบลอสุด (12px) → หมดเวลา = ชัด 100%
+   * ถ้าไม่ได้ตั้งเวลาต่อข้อ (0 = ไม่จับเวลา) จะไม่เบลอเลย
+   */
+  const blurPx =
+    fun.blurQuestion && state.phase === "asking" && state.durationMs
+      ? +(12 * (left / state.durationMs)).toFixed(2)
+      : 0;
+
   /** ตัวเลือกหดลงตามเวลาที่เหลือ */
   const shrink =
     fun.shrinkChoices && state.phase === "asking" && state.durationMs
@@ -246,12 +256,18 @@ export default function QuizPanel({
         </div>
 
         <p
-          key={`${q?.id}-q`}
           className={[
             "display mb-5 text-[17px] leading-relaxed font-medium text-[var(--ink)]",
-            fun.blurQuestion && state.phase === "asking" ? "q-deblur" : "",
             mirrored ? "mirrored" : "",
           ].join(" ")}
+          style={
+            blurPx > 0.05
+              ? {
+                  filter: `blur(${blurPx}px)`,
+                  letterSpacing: `${(blurPx / 12) * 0.06}em`,
+                }
+              : undefined
+          }
         >
           <MathText>{q?.text ?? ""}</MathText>
         </p>
