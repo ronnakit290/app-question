@@ -42,3 +42,10 @@ export function subscribe(sub: Subscriber): () => void {
 export function currentPresence() {
   return presence();
 }
+
+/** ผู้ที่กำลังเชื่อมต่ออยู่จริง (unique ตาม clientId) */
+export function participants(): { clientId: string; name: string }[] {
+  const seen = new Map<string, string>();
+  for (const s of subscribers) seen.set(s.clientId, s.name);
+  return [...seen].map(([clientId, name]) => ({ clientId, name }));
+}

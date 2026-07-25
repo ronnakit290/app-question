@@ -58,6 +58,26 @@ require an external broker (Redis pub/sub, Postgres LISTEN/NOTIFY, etc.).
 
 Fonts are loaded via [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) (Noto Sans Thai).
 
+## AI Quiz
+
+ปุ่ม `+` หน้าช่องพิมพ์เปิดเมนู 2 อย่าง: **ตั้งค่า AI** และ **Generate คำถาม**
+
+- `app/lib/ai.ts` — เรียกโมเดลผ่าน OpenAI / OpenRouter / Anthropic / Google Gemini แล้ว parse JSON ออกมาเป็นข้อสอบปรนัย
+- `app/lib/quiz.ts` — เอนจินควิซในหน่วยความจำ (timer ต่อข้อ, เฉลย, ดีเลย์, auto-next, คะแนน) กระจายสถานะผ่าน SSE เหมือนข้อความแชท
+- `app/api/ai/settings` — `GET`/`PUT` การตั้งค่า (provider, model, base URL, เวลาต่อข้อ, ดีเลย์, auto-next) — API Key เก็บใน sqlite ฝั่งเซิร์ฟเวอร์และไม่ถูกส่งกลับมาที่เบราว์เซอร์ (ตั้งค่าเริ่มต้นจาก `AI_API_KEY` ได้)
+- `app/api/ai/generate` — สร้างคำถามทั้งชุดล่วงหน้า แล้วบันทึกลงตาราง `question_sets` / `questions`
+- `app/api/question-sets` — รายการชุดคำถามที่เก็บไว้ (เล่นซ้ำได้ ไม่ต้อง generate ใหม่)
+- `app/api/quiz` — `start` / `answer` / `skip` / `next` / `stop`
+
+ระหว่างเล่น: กดตัวเลือกในการ์ดควิซ หรือพิมพ์ `A`–`D` (หรือ `1`–`4`) ในช่องแชทก็ตอบได้
+
+จังหวะของแต่ละข้อ:
+
+`asking` (รอจนทุกคนในห้องตอบครบ หรือหมดเวลาต่อข้อ) → `prereveal` (หน่วงตามค่าดีเลย์)
+→ `reveal` (โชว์เฉลย คำอธิบาย และคำตอบของทุกคนพร้อมคะแนนที่ได้ ค้างไว้เท่าค่าดีเลย์) → ข้อถัดไป
+
+คะแนนคิดจากความเร็ว + โบนัสคนตอบถูกคนแรก + streak และสรุป leaderboard ตอนจบ
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:

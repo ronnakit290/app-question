@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
-import type { ChatMessage, StreamEvent } from "../lib/types";
+import type { ChatMessage, QuizState, StreamEvent } from "../lib/types";
+import { randomId } from "../lib/uuid";
 
 const CLIENT_ID_KEY = "chat:clientId";
 
@@ -16,12 +17,12 @@ function ensureClientId(): string {
       clientIdCache = existing;
       return existing;
     }
-    const id = crypto.randomUUID();
+    const id = randomId();
     localStorage.setItem(CLIENT_ID_KEY, id);
     clientIdCache = id;
     return id;
   } catch {
-    clientIdCache = crypto.randomUUID();
+    clientIdCache = randomId();
     return clientIdCache;
   }
 }
@@ -43,6 +44,7 @@ export function useChat(name: string) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [users, setUsers] = useState<string[]>([]);
   const [status, setStatus] = useState<ChatStatus>("connecting");
+  const [quiz, setQuiz] = useState<QuizState | null>(null);
 
   const upsert = useCallback((incoming: ChatMessage) => {
     setMessages((prev) =>
@@ -64,6 +66,13 @@ export function useChat(name: string) {
       })
       .catch(() => {});
 
+    fetch("/api/quiz")
+      .then((r) => r.json())
+      .then((data: { state?: QuizState }) => {
+        if (!cancelled && data.state) setQuiz(data.state);
+      })
+      .catch(() => {});
+
     const source = new EventSource(
       `/api/stream?clientId=${encodeURIComponent(clientId)}&name=${encodeURIComponent(name)}`,
     );
@@ -75,6 +84,7 @@ export function useChat(name: string) {
       const event = JSON.parse(e.data) as StreamEvent;
       if (event.type === "message") upsert(event.message);
       else if (event.type === "presence") setUsers(event.users);
+      else if (event.type === "quiz") setQuiz(event.state);
     };
 
     return () => {
@@ -100,5 +110,25 @@ export function useChat(name: string) {
     [clientId, name, upsert],
   );
 
-  return { messages, users, status, send, clientId };
+  const quizAction = useCallback(
+    async (body: Record<string, unknown>) => {
+      const res = await fetch("/api/quiz", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const data = (await res.json()) as { state?: QuizState; error?: string };
+      if (data.state) setQuiz(data.state);
+      if (!res.ok) throw new Error(data.error ?? "quiz action failed");
+      return data;
+    },
+    [],
+  );
+
+  const answer = useCallback(
+    (choice: number) => quizAction({ action: "answer", clientId, name, choice }),
+    [quizAction, clientId, name],
+  );
+
+  return { messages, users, status, send, clientId, quiz, quizAction, answer };
 }

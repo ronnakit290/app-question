@@ -2,7 +2,22 @@
 
 import { useEffect, useRef, useState } from "react";
 import NameForm from "./NameForm";
+import PlusMenu from "./PlusMenu";
+import AiSettingsModal from "./AiSettingsModal";
+import GenerateModal from "./GenerateModal";
+import QuizPanel from "./QuizPanel";
 import { useChat } from "../hooks/useChat";
+import { useViewportHeight } from "../hooks/useViewportHeight";
+import Scoreboard from "./Scoreboard";
+import { QUIZ_BOT_ID } from "../lib/quiz-shared";
+import {
+  Bot,
+  SendHorizontal,
+  Settings2,
+  SkipForward,
+  Sparkles,
+  Square,
+} from "lucide-react";
 
 const time = (t: number) =>
   new Date(t).toLocaleTimeString("th-TH", {
@@ -11,13 +26,14 @@ const time = (t: number) =>
   });
 
 const colorFor = (key: string) => {
+  // โทนกลางๆ หรูๆ: กราไฟต์ · โทป · ทอง · เขียวเข้ม · เบอร์กันดี · น้ำเงินหมึก
   const palette = [
-    "bg-sky-500",
-    "bg-indigo-500",
-    "bg-violet-500",
-    "bg-cyan-500",
-    "bg-blue-500",
-    "bg-teal-500",
+    "bg-[#2b2d33]",
+    "bg-[#8a7a68]",
+    "bg-[#b08d4f]",
+    "bg-[#3f5a4c]",
+    "bg-[#6d4a4a]",
+    "bg-[#3b4a63]",
   ];
   let h = 0;
   for (let i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) >>> 0;
@@ -37,45 +53,79 @@ export default function Chat({
   name: string;
   onChangeName: (name: string) => void;
 }) {
-  const { messages, users, status, send, clientId } = useChat(name);
+  const { messages, users, status, send, clientId, quiz, quizAction, answer } =
+    useChat(name);
   const [draft, setDraft] = useState("");
   const [editing, setEditing] = useState(false);
+  const [modal, setModal] = useState<null | "settings" | "generate">(null);
+  const [toast, setToast] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+
+  useViewportHeight();
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  useEffect(() => {
+    if (!toast) return;
+    const id = setTimeout(() => setToast(null), 2600);
+    return () => clearTimeout(id);
+  }, [toast]);
+
+  const run = (body: Record<string, unknown>) =>
+    quizAction(body).catch((e: Error) => setToast(e.message));
+
+  const quizRunning = quiz != null && quiz.phase !== "idle";
+
+  // ตอบด้วยการพิมพ์ A/B/C/D หรือ 1/2/3/4 ในช่องแชทระหว่างเล่น
+  const answerShortcut = (text: string): number | null => {
+    if (!quiz || quiz.phase !== "asking" || !quiz.question) return null;
+    const t = text.trim().toUpperCase();
+    if (/^[A-F]$/.test(t)) return t.charCodeAt(0) - 65;
+    if (/^[1-6]$/.test(t)) return Number(t) - 1;
+    return null;
+  };
+
   const submit = () => {
     const text = draft.trim();
     if (!text) return;
+    const shortcut = answerShortcut(text);
     setDraft("");
+    if (shortcut !== null && shortcut < (quiz?.question?.choices.length ?? 0)) {
+      void answer(shortcut).catch((e: Error) => setToast(e.message));
+      return;
+    }
     void send(text);
   };
 
   return (
-    <div className="mx-auto flex h-dvh w-full max-w-3xl flex-col gap-4 p-4 sm:p-6">
+    <div
+      className="mx-auto flex w-full max-w-3xl flex-col gap-3 p-3 sm:gap-4 sm:p-6"
+      style={{ height: "var(--app-h, 100dvh)" }}
+    >
       {/* Header */}
-      <header className="glass flex items-center gap-3 rounded-3xl px-5 py-4">
+      <header className="glass gilded flex shrink-0 items-center gap-3.5 rounded-2xl px-4 py-3 sm:px-5 sm:py-4">
         <div
-          className={`flex h-11 w-11 items-center justify-center rounded-2xl ${colorFor(
+          className={`flex h-11 w-11 items-center justify-center rounded-full ${colorFor(
             clientId || name,
-          )} text-lg font-semibold text-white shadow-lg shadow-blue-700/25`}
+          )} text-base font-medium text-white`}
         >
           {name.charAt(0).toUpperCase()}
         </div>
         <div className="min-w-0 flex-1">
-          <div className="truncate font-semibold text-blue-950">
+          <div className="eyebrow mb-0.5">Quiz Room</div>
+          <div className="display truncate text-[15px] font-semibold text-[var(--ink)]">
             ห้องแชทรวม
           </div>
-          <div className="flex items-center gap-1.5 text-xs text-blue-900/60">
+          <div className="mt-0.5 flex items-center gap-1.5 text-[11px] text-[var(--muted)]">
             <span
               className={`h-1.5 w-1.5 rounded-full ${
                 status === "online"
-                  ? "bg-emerald-500"
+                  ? "bg-[var(--good)]"
                   : status === "connecting"
-                    ? "bg-amber-400"
-                    : "bg-rose-500"
+                    ? "bg-[var(--gold)]"
+                    : "bg-[var(--bad)]"
               }`}
             />
             <span className="truncate">
@@ -87,22 +137,37 @@ export default function Chat({
         </div>
         <button
           onClick={() => setEditing(true)}
-          className="glass-soft shrink-0 rounded-xl px-3 py-2 text-xs font-medium text-blue-900 transition hover:bg-white/75"
+          className="field shrink-0 rounded-full px-3.5 py-2 text-xs font-medium text-[var(--muted)] transition hover:text-[var(--ink)]"
         >
           {name} · เปลี่ยนชื่อ
         </button>
       </header>
 
       {/* Messages */}
-      <div className="glass chat-scroll flex-1 overflow-y-auto rounded-3xl p-4 sm:p-5">
+      <div className="glass chat-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain rounded-2xl p-4 sm:p-6">
         {messages.length === 0 ? (
-          <div className="flex h-full items-center justify-center text-sm text-blue-900/50">
+          <div className="flex h-full items-center justify-center text-sm text-[var(--faint)]">
             ยังไม่มีข้อความ เริ่มทักทายกันได้เลย
           </div>
         ) : (
           <div className="flex flex-col gap-3">
             {messages.map((m, i) => {
               const mine = m.clientId === clientId;
+              const bot = m.clientId === QUIZ_BOT_ID;
+              if (bot) {
+                return (
+                  <div key={m.id} className="flex justify-center">
+                    <div className="flex max-w-[88%] items-start gap-2.5 rounded-xl border border-[var(--line)] bg-white/70 px-4 py-2.5 text-[13px] leading-relaxed whitespace-pre-wrap text-[var(--muted)]">
+                      <Bot
+                        size={14}
+                        strokeWidth={1.75}
+                        className="mt-0.5 shrink-0 text-[var(--gold)]"
+                      />
+                      <span>{m.text}</span>
+                    </div>
+                  </div>
+                );
+              }
               const showAuthor =
                 !mine && messages[i - 1]?.clientId !== m.clientId;
               return (
@@ -121,21 +186,21 @@ export default function Chat({
                   )}
                   <div
                     className={[
-                      "max-w-[78%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed shadow-sm",
+                      "max-w-[78%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed",
                       mine
-                        ? "rounded-br-md bg-blue-600/90 text-white shadow-blue-700/20"
-                        : "glass-soft rounded-bl-md text-blue-950",
+                        ? "rounded-br-sm bg-[var(--accent)] text-white"
+                        : "glass-soft rounded-bl-sm text-[var(--ink)]",
                     ].join(" ")}
                   >
                     {showAuthor && (
-                      <div className="mb-0.5 text-[11px] font-semibold text-blue-800/80">
+                      <div className="mb-0.5 text-[11px] font-semibold text-[var(--muted)]">
                         {m.name}
                       </div>
                     )}
                     <p className="whitespace-pre-wrap break-words">{m.text}</p>
                     <div
                       className={`mt-1 text-[10px] ${
-                        mine ? "text-white/70" : "text-blue-900/50"
+                        mine ? "text-white/70" : "text-[var(--faint)]"
                       }`}
                     >
                       {time(m.createdAt)}
@@ -149,33 +214,114 @@ export default function Chat({
         )}
       </div>
 
+      {/* Scoreboard เรียลไทม์ */}
+      {quiz && quiz.phase !== "idle" && (
+        <div className="shrink-0">
+          <Scoreboard state={quiz} clientId={clientId} />
+        </div>
+      )}
+
+      {/* Quiz */}
+      {quiz && quiz.phase !== "idle" && (
+        <QuizPanel
+          state={quiz}
+          clientId={clientId}
+          onAnswer={(c) => void answer(c).catch((e: Error) => setToast(e.message))}
+          onSkip={() => void run({ action: "skip" })}
+          onStop={() => void run({ action: "stop" })}
+        />
+      )}
+
       {/* Composer */}
-      <div className="glass flex items-end gap-2 rounded-3xl p-3">
+      <div className="glass flex shrink-0 items-end gap-2 rounded-2xl p-2.5">
+        <PlusMenu
+          items={[
+            {
+              key: "generate",
+              icon: <Sparkles size={17} strokeWidth={1.75} />,
+              label: "Generate คำถาม",
+              hint: "ให้ AI ออกข้อสอบแล้วเล่นด้วยกัน",
+            },
+            {
+              key: "settings",
+              icon: <Settings2 size={17} strokeWidth={1.75} />,
+              label: "ตั้งค่า AI",
+              hint: "โมเดล · API Key · เวลาต่อข้อ",
+            },
+            ...(quizRunning
+              ? [
+                  {
+                    key: "skip",
+                    icon: <SkipForward size={17} strokeWidth={1.75} />,
+                    label: "ข้ามข้อนี้",
+                  },
+                  {
+                    key: "stop",
+                    icon: <Square size={17} strokeWidth={1.75} />,
+                    label: "หยุดควิซ",
+                    danger: true,
+                  },
+                ]
+              : []),
+          ]}
+          onSelect={(key) => {
+            if (key === "generate" || key === "settings") setModal(key);
+            else void run({ action: key });
+          }}
+        />
         <textarea
           rows={1}
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
+          onFocus={() => {
+            // รอคีย์บอร์ดเด้งเสร็จก่อนค่อยเลื่อน
+            setTimeout(
+              () => bottomRef.current?.scrollIntoView({ block: "end" }),
+              250,
+            );
+          }}
           onKeyDown={(e) => {
             if (e.key === "Enter" && !e.shiftKey) {
               e.preventDefault();
               submit();
             }
           }}
-          placeholder="พิมพ์ข้อความ…"
+          placeholder={
+            quiz?.phase === "asking"
+              ? "พิมพ์ A/B/C/D เพื่อตอบ หรือคุยต่อได้เลย…"
+              : "พิมพ์ข้อความ…"
+          }
           maxLength={2000}
-          className="max-h-32 flex-1 resize-none bg-transparent px-3 py-2.5 text-blue-950 placeholder:text-blue-900/40 outline-none"
+          className="max-h-32 flex-1 resize-none bg-transparent px-3 py-2.5 text-[var(--ink)] placeholder:text-[var(--faint)] outline-none"
         />
         <button
           onClick={submit}
           disabled={!draft.trim()}
-          className="rounded-2xl bg-blue-600/90 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-700/25 transition hover:bg-blue-600 disabled:opacity-40"
+          className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--accent)] text-[var(--accent-ink)] transition hover:opacity-90 disabled:opacity-25"
+          aria-label="ส่ง"
         >
-          ส่ง
+          <SendHorizontal size={17} strokeWidth={1.75} />
         </button>
       </div>
 
+      {modal === "settings" && <AiSettingsModal onClose={() => setModal(null)} />}
+
+      {modal === "generate" && (
+        <GenerateModal
+          onClose={() => setModal(null)}
+          onStart={(setId) => void run({ action: "start", setId })}
+          onOpenSettings={() => setModal("settings")}
+        />
+      )}
+
+      {toast && (
+        <div className="pointer-events-none fixed bottom-28 left-1/2 z-50 -translate-x-1/2 animate-[fadeUp_.2s_ease-out] rounded-full bg-[var(--ink)] px-4 py-2 text-[13px] text-white shadow-[var(--shadow-lg)]">
+          {toast}
+        </div>
+      )}
+
       {editing && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-blue-950/20 p-4 backdrop-blur-sm">
+        <div className="backdrop-in fixed inset-0 z-50 flex items-center justify-center bg-[rgba(20,21,26,0.32)] p-4 backdrop-blur-[3px]">
           <NameForm
             initialValue={name}
             title="เปลี่ยนชื่อ"

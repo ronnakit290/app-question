@@ -26,16 +26,16 @@ export default function NameForm({
         e.preventDefault();
         if (!disabled) onSubmit(value);
       }}
-      className="glass w-full max-w-md rounded-3xl p-8"
+      className="elevated gilded dialog-in w-full max-w-md rounded-2xl p-8"
     >
-      <div className="mb-1 text-2xl font-semibold tracking-tight text-blue-950">
+      <div className="display mb-1.5 text-2xl font-semibold text-[var(--ink)]">
         {title}
       </div>
-      <p className="mb-6 text-sm text-blue-900/70">
+      <p className="mb-6 text-sm text-[var(--muted)]">
         กรอกชื่อของคุณ ระบบจะจำไว้ใช้ทุกครั้งจนกว่าคุณจะเปลี่ยนเอง
       </p>
 
-      <label className="mb-2 block text-xs font-medium uppercase tracking-wide text-blue-900/60">
+      <label className="mb-2 block text-xs font-medium uppercase tracking-wide text-[var(--muted)]">
         ชื่อของคุณ
       </label>
       <input
@@ -44,7 +44,7 @@ export default function NameForm({
         onChange={(e) => setValue(e.target.value)}
         placeholder="เช่น Ronnakit"
         maxLength={32}
-        className="glass-soft w-full rounded-2xl px-4 py-3 text-blue-950 placeholder:text-blue-900/40 outline-none transition focus:border-white focus:ring-2 focus:ring-blue-400/50"
+        className="field w-full rounded-xl px-4 py-3 text-[var(--ink)] placeholder:text-[var(--faint)] outline-none"
       />
 
       <div className="mt-6 flex gap-3">
@@ -52,7 +52,7 @@ export default function NameForm({
           <button
             type="button"
             onClick={onCancel}
-            className="glass-soft flex-1 rounded-2xl px-4 py-3 text-sm font-medium text-blue-900 transition hover:bg-white/70"
+            className="field flex-1 rounded-xl px-4 py-3 text-sm font-medium text-[var(--muted)] transition hover:text-[var(--ink)]"
           >
             ยกเลิก
           </button>
@@ -60,7 +60,7 @@ export default function NameForm({
         <button
           type="submit"
           disabled={disabled}
-          className="flex-1 rounded-2xl bg-blue-600/90 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-700/25 transition hover:bg-blue-600 disabled:cursor-not-allowed disabled:opacity-40"
+          className="flex-1 rounded-xl bg-[var(--accent)] px-4 py-3 text-sm font-medium text-[var(--accent-ink)] transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-25"
         >
           {submitLabel}
         </button>

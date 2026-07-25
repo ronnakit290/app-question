@@ -10,7 +10,7 @@ export default function Home() {
   if (!ready) {
     return (
       <main className="flex flex-1 items-center justify-center">
-        <div className="h-10 w-10 animate-spin rounded-full border-2 border-white/60 border-t-blue-600" />
+        <div className="h-10 w-10 animate-spin rounded-full border-2 border-[var(--line)] border-t-[var(--ink)]" />
       </main>
     );
   }
