@@ -49,6 +49,14 @@ export async function PUT(request: Request) {
       Math.max(2, Math.round(body.choicesPerQuestion)),
     );
 
+  if (body.fun && typeof body.fun === "object") {
+    const incoming = body.fun as Record<string, unknown>;
+    const fun: Record<string, boolean> = {};
+    for (const [k, v] of Object.entries(incoming))
+      if (typeof v === "boolean") fun[k] = v;
+    patch.fun = fun as unknown as AiSettings["fun"];
+  }
+
   const settings = saveAiSettings(patch);
 
   // ส่ง apiKey เป็น "" เพื่อล้างคีย์ / ไม่ส่งเลย = ไม่แตะ

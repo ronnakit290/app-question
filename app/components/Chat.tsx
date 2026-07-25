@@ -11,6 +11,7 @@ import { useChat } from "../hooks/useChat";
 import { useViewportHeight } from "../hooks/useViewportHeight";
 import Scoreboard from "./Scoreboard";
 import MathText from "./MathText";
+import Confetti from "./Confetti";
 import { QUIZ_BOT_ID } from "../lib/quiz-shared";
 import {
   Bot,
@@ -76,6 +77,7 @@ export default function Chat({
   const [toast, setToast] = useState<string | null>(null);
   const [leaving, setLeaving] = useState(false);
   const [leavingBusy, setLeavingBusy] = useState(false);
+
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useViewportHeight();
@@ -83,6 +85,15 @@ export default function Chat({
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  // ตอบถูก + เปิดโหมดคอนเฟตติ = คีย์เปลี่ยน → Confetti เล่นหนึ่งครั้งต่อข้อ
+  const confettiKey =
+    quiz &&
+    quiz.phase === "reveal" &&
+    quiz.fun.confetti &&
+    quiz.answered[clientId] === quiz.answer
+      ? `${quiz.setId}-${quiz.index}`
+      : "";
 
   useEffect(() => {
     if (!toast) return;
@@ -377,6 +388,8 @@ export default function Chat({
           onOpenSettings={() => setModal("settings")}
         />
       )}
+
+      <Confetti trigger={confettiKey} />
 
       {toast && (
         <div className="pointer-events-none fixed bottom-28 left-1/2 z-50 -translate-x-1/2 animate-[fadeUp_.2s_ease-out] rounded-full bg-[var(--ink)] px-4 py-2 text-[13px] text-white shadow-[var(--shadow-lg)]">

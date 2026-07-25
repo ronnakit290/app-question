@@ -326,3 +326,59 @@ body {
 .katex .minner {
   color: inherit;
 }
+
+/* ---------- โหมดกวนๆ ---------- */
+
+/* ตัวเลือกลอยไปลอยมา — สุ่มเฟส/ระยะทางผ่าน CSS var รายปุ่ม */
+@keyframes floaty {
+  0% {
+    transform: translate3d(0, 0, 0) rotate(0deg);
+  }
+  25% {
+    transform: translate3d(var(--fx), calc(var(--fy) * -1), 0) rotate(var(--fr));
+  }
+  50% {
+    transform: translate3d(calc(var(--fx) * -0.7), var(--fy), 0)
+      rotate(calc(var(--fr) * -1));
+  }
+  75% {
+    transform: translate3d(calc(var(--fx) * 0.5), calc(var(--fy) * -0.6), 0)
+      rotate(var(--fr));
+  }
+  100% {
+    transform: translate3d(0, 0, 0) rotate(0deg);
+  }
+}
+
+.choice-float {
+  animation: floaty var(--fd, 6s) ease-in-out infinite;
+  animation-delay: var(--fdelay, 0s);
+  will-change: transform;
+}
+
+/* โจทย์เบลอแล้วค่อยๆ ชัด */
+@keyframes deblur {
+  from {
+    filter: blur(9px);
+    letter-spacing: 0.08em;
+  }
+  to {
+    filter: blur(0);
+    letter-spacing: -0.01em;
+  }
+}
+.q-deblur {
+  animation: deblur 4.5s ease-out both;
+}
+
+/* ภาพกระจก */
+.mirrored {
+  transform: scaleX(-1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .choice-float,
+  .q-deblur {
+    animation: none;
+  }
+}

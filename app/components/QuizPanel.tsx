@@ -1,6 +1,6 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
+import { useMemo, useSyncExternalStore } from "react";
 import type { QuizState } from "../lib/types";
 import MathText from "./MathText";
 import {
@@ -15,7 +15,32 @@ import {
   Square,
   Timer,
   TimerOff,
+  Zap,
 } from "lucide-react";
+
+/** สุ่มแบบมี seed — คนละ client ได้ลำดับต่างกัน แต่คงที่ตลอดข้อเดียวกัน */
+function hash(str: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < str.length; i++) {
+    h ^= str.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+
+function seededShuffle<T>(items: T[], seed: number): number[] {
+  const order = items.map((_, i) => i);
+  let s = seed || 1;
+  const rnd = () => {
+    s = (s * 1664525 + 1013904223) >>> 0;
+    return s / 4294967296;
+  };
+  for (let i = order.length - 1; i > 0; i--) {
+    const j = Math.floor(rnd() * (i + 1));
+    [order[i], order[j]] = [order[j], order[i]];
+  }
+  return order;
+}
 
 const LETTERS = ["A", "B", "C", "D", "E", "F"];
 
@@ -64,6 +89,25 @@ export default function QuizPanel({
   const votes = (q?.choices ?? []).map(
     (_, i) => state.results.filter((r) => r.choice === i).length,
   );
+
+  const fun = state.fun;
+  const seed = hash(`${clientId}:${q?.id ?? ""}`);
+
+  /** ลำดับที่จะแสดง (index จริงของตัวเลือก) */
+  const order = useMemo(() => {
+    const n = q?.choices.length ?? 0;
+    const base = Array.from({ length: n }, (_, i) => i);
+    return fun.shuffleChoices ? seededShuffle(base, seed) : base;
+  }, [q?.choices.length, fun.shuffleChoices, seed]);
+
+  /** ข้อนี้พลิกกระจกไหม — สุ่มจาก seed ของข้อ (ทุกคนเห็นเหมือนกัน) */
+  const mirrored = fun.mirrorMode && hash(q?.id ?? "") % 3 === 0;
+
+  /** ตัวเลือกหดลงตามเวลาที่เหลือ */
+  const shrink =
+    fun.shrinkChoices && state.phase === "asking" && state.durationMs
+      ? Math.max(0.62, 0.62 + 0.38 * (left / state.durationMs))
+      : 1;
 
   if (state.phase === "idle") return null;
 
@@ -152,6 +196,17 @@ export default function QuizPanel({
           <span className="rounded-full border border-[var(--line-strong)] px-3 py-1 text-[11px] font-medium tabular-nums text-[var(--ink)]">
             {state.index + 1} / {state.total}
           </span>
+          {state.doubled && (
+            <span className="flex shrink-0 items-center gap-1 rounded-full bg-[var(--gold-soft)] px-2.5 py-1 text-[11px] font-semibold text-[var(--gold)]">
+              <Zap size={11} strokeWidth={2.5} />
+              x2
+            </span>
+          )}
+          {mirrored && (
+            <span className="shrink-0 rounded-full bg-black/[0.05] px-2.5 py-1 text-[11px] font-medium text-[var(--muted)]">
+              กระจก
+            </span>
+          )}
           <span className="min-w-0 flex-1 truncate text-xs text-[var(--muted)]">
             {prereveal
               ? `ทุกคนตอบครบแล้ว · เฉลยใน ${Math.ceil(left / 1000)}s`
@@ -190,12 +245,23 @@ export default function QuizPanel({
           </button>
         </div>
 
-        <p className="display mb-5 text-[17px] leading-relaxed font-medium text-[var(--ink)]">
+        <p
+          key={`${q?.id}-q`}
+          className={[
+            "display mb-5 text-[17px] leading-relaxed font-medium text-[var(--ink)]",
+            fun.blurQuestion && state.phase === "asking" ? "q-deblur" : "",
+            mirrored ? "mirrored" : "",
+          ].join(" ")}
+        >
           <MathText>{q?.text ?? ""}</MathText>
         </p>
 
-        <div className="grid gap-2 sm:grid-cols-2">
-          {q?.choices.map((c, i) => {
+        <div
+          className="grid gap-2 transition-all duration-200 sm:grid-cols-2"
+          style={shrink < 1 ? { fontSize: `${shrink * 100}%` } : undefined}
+        >
+          {order.map((i, slot) => {
+            const c = q?.choices[i] ?? "";
             const isMine = myChoice === i;
             const isAnswer = reveal && state.answer === i;
             const isWrongMine = reveal && isMine && state.answer !== i;
@@ -214,7 +280,21 @@ export default function QuizPanel({
                         ? "border-transparent bg-[var(--accent)] text-[var(--accent-ink)]"
                         : "border-[var(--line-strong)] bg-white text-[var(--ink)] hover:border-[rgba(17,17,17,0.28)] hover:bg-[var(--surface-2)]",
                   locked && !isMine && !isAnswer ? "opacity-55" : "",
+                  fun.floatingChoices && state.phase === "asking" && !locked
+                    ? "choice-float"
+                    : "",
                 ].join(" ")}
+                style={
+                  fun.floatingChoices
+                    ? ({
+                        "--fx": `${((seed >> (slot * 3)) % 22) - 11}px`,
+                        "--fy": `${((seed >> (slot * 5)) % 16) - 8}px`,
+                        "--fr": `${((seed >> (slot * 7)) % 7) - 3}deg`,
+                        "--fd": `${3.2 + (slot % 4) * 0.7}s`,
+                        "--fdelay": `${(slot % 5) * 0.25}s`,
+                      } as React.CSSProperties)
+                    : undefined
+                }
               >
                 <span
                   className={[
@@ -224,9 +304,11 @@ export default function QuizPanel({
                       : "bg-black/[0.06] text-[var(--ink)]",
                   ].join(" ")}
                 >
-                  {LETTERS[i]}
+                  {LETTERS[slot]}
                 </span>
-                <span className="min-w-0 flex-1">
+                <span
+                  className={`min-w-0 flex-1 ${mirrored ? "mirrored" : ""}`}
+                >
                   <MathText>{c}</MathText>
                 </span>
                 {reveal && votes[i] > 0 && (

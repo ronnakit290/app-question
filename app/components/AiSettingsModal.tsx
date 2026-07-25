@@ -2,13 +2,73 @@
 
 import { useEffect, useState } from "react";
 import Modal, { Field, inputClass } from "./Modal";
-import { Eye, EyeOff } from "lucide-react";
-import type { AiProvider, AiSettingsPublic } from "../lib/types";
+import {
+  Eye,
+  EyeOff,
+  Maximize2,
+  PartyPopper,
+  Shuffle,
+  Sparkles,
+  Waves,
+  Wind,
+  Zap,
+} from "lucide-react";
+import type { AiProvider, AiSettingsPublic, FunSettings } from "../lib/types";
 
 type ProviderInfo = Record<
   AiProvider,
   { label: string; baseUrl: string; models: string[] }
 >;
+
+const FUN_MODES: {
+  key: keyof FunSettings;
+  icon: typeof Wind;
+  label: string;
+  hint: string;
+}[] = [
+  {
+    key: "floatingChoices",
+    icon: Wind,
+    label: "ตัวเลือกลอยได้",
+    hint: "ตัวเลือกลอยไปลอยมา ต้องกดให้ทัน",
+  },
+  {
+    key: "shuffleChoices",
+    icon: Shuffle,
+    label: "สลับตัวเลือก",
+    hint: "แต่ละคนเห็นลำดับ A–D ไม่เหมือนกัน ลอกกันไม่ได้",
+  },
+  {
+    key: "blurQuestion",
+    icon: Waves,
+    label: "โจทย์เบลอ",
+    hint: "โจทย์เบลอตอนแรกแล้วค่อยๆ ชัด ใครตาไวได้เปรียบ",
+  },
+  {
+    key: "shrinkChoices",
+    icon: Maximize2,
+    label: "ตัวเลือกหด",
+    hint: "ตัวเลือกเล็กลงเรื่อยๆ ตามเวลาที่เหลือ",
+  },
+  {
+    key: "mirrorMode",
+    icon: Sparkles,
+    label: "โหมดกระจก",
+    hint: "บางข้อสุ่มพลิกข้อความกลับด้าน",
+  },
+  {
+    key: "doubleTrouble",
+    icon: Zap,
+    label: "ข้อสุดท้ายคูณสอง",
+    hint: "ข้อสุดท้ายได้คะแนน x2 พลิกกระดานได้",
+  },
+  {
+    key: "confetti",
+    icon: PartyPopper,
+    label: "คอนเฟตติ",
+    hint: "ตอบถูกแล้วมีคอนเฟตติฉลอง",
+  },
+];
 
 export default function AiSettingsModal({ onClose }: { onClose: () => void }) {
   const [providers, setProviders] = useState<ProviderInfo | null>(null);
@@ -44,6 +104,7 @@ export default function AiSettingsModal({ onClose }: { onClose: () => void }) {
         choicesPerQuestion: s.choicesPerQuestion,
         revealDelayMs: s.revealDelayMs,
         autoNext: s.autoNext,
+        fun: s.fun,
       };
       if (apiKey.trim()) body.apiKey = apiKey.trim();
       const res = await fetch("/api/ai/settings", {
@@ -63,7 +124,7 @@ export default function AiSettingsModal({ onClose }: { onClose: () => void }) {
   return (
     <Modal
       title="ตั้งค่า AI"
-      subtitle="เลือกผู้ให้บริการ โมเดล และจังหวะการเล่นควิซ"
+      subtitle="ผู้ให้บริการ โมเดล จังหวะการเล่น และโหมดกวนๆ"
       onClose={onClose}
       footer={
         <div className="flex gap-3">
@@ -223,6 +284,54 @@ export default function AiSettingsModal({ onClose }: { onClose: () => void }) {
               ))}
             </div>
           </Field>
+
+          <div>
+            <div className="eyebrow mb-2">Fun Modes</div>
+            <div className="flex flex-col gap-2">
+              {FUN_MODES.map((m) => {
+                const on = s.fun[m.key];
+                return (
+                  <button
+                    key={m.key}
+                    onClick={() => patch({ fun: { ...s.fun, [m.key]: !on } })}
+                    className={[
+                      "flex items-center gap-3 rounded-xl px-4 py-2.5 text-left transition",
+                      on
+                        ? "bg-[var(--gold-soft)] ring-1 ring-[rgba(176,141,79,0.3)]"
+                        : "field hover:bg-black/[0.02]",
+                    ].join(" ")}
+                  >
+                    <m.icon
+                      size={16}
+                      strokeWidth={1.75}
+                      className={on ? "text-[var(--gold)]" : "text-[var(--faint)]"}
+                    />
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-sm font-medium text-[var(--ink)]">
+                        {m.label}
+                      </span>
+                      <span className="block text-[11px] text-[var(--muted)]">
+                        {m.hint}
+                      </span>
+                    </span>
+                    <span
+                      className={[
+                        "flex h-5 w-9 shrink-0 items-center rounded-full p-0.5 transition",
+                        on ? "bg-[var(--gold)]" : "bg-black/[0.12]",
+                      ].join(" ")}
+                    >
+                      <span
+                        className={[
+                          "h-4 w-4 rounded-full bg-white shadow transition",
+                          on ? "translate-x-4" : "translate-x-0",
+                        ].join(" ")}
+                      />
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
 
           <button
             onClick={() => patch({ autoNext: !s.autoNext })}

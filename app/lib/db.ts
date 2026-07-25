@@ -1,7 +1,13 @@
 import { Database } from "bun:sqlite";
 import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
-import type { AiSettings, ChatMessage, Question, QuestionSet } from "./types";
+import type {
+  AiSettings,
+  ChatMessage,
+  FunSettings,
+  Question,
+  QuestionSet,
+} from "./types";
 import { randomId } from "./uuid";
 
 /**
@@ -131,6 +137,15 @@ export const DEFAULT_AI_SETTINGS: AiSettings = {
   revealDelayMs: 4000,
   autoNext: true,
   choicesPerQuestion: 4,
+  fun: {
+    floatingChoices: false,
+    shuffleChoices: false,
+    blurQuestion: false,
+    shrinkChoices: false,
+    mirrorMode: false,
+    doubleTrouble: false,
+    confetti: true,
+  },
 };
 
 function getRaw(key: string): string | null {
@@ -152,14 +167,20 @@ export function getAiSettings(): AiSettings {
   const raw = getRaw(SETTINGS_KEY);
   if (!raw) return { ...DEFAULT_AI_SETTINGS };
   try {
-    return { ...DEFAULT_AI_SETTINGS, ...(JSON.parse(raw) as AiSettings) };
+    const saved = JSON.parse(raw) as Partial<AiSettings>;
+    return {
+      ...DEFAULT_AI_SETTINGS,
+      ...saved,
+      fun: { ...DEFAULT_AI_SETTINGS.fun, ...(saved.fun as FunSettings) },
+    };
   } catch {
     return { ...DEFAULT_AI_SETTINGS };
   }
 }
 
 export function saveAiSettings(patch: Partial<AiSettings>): AiSettings {
-  const next = { ...getAiSettings(), ...patch };
+  const current = getAiSettings();
+  const next = { ...current, ...patch, fun: { ...current.fun, ...patch.fun } };
   setRaw(SETTINGS_KEY, JSON.stringify(next));
   return next;
 }

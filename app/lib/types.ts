@@ -27,9 +27,29 @@ export type AiSettings = {
   autoNext: boolean;
   /** จำนวนตัวเลือกต่อข้อ (2–6) */
   choicesPerQuestion: number;
+  /** โหมดกวนๆ */
+  fun: FunSettings;
 };
 
 export type AiSettingsPublic = AiSettings & { hasKey: boolean };
+
+/** โหมดกวนๆ เปิด/ปิดได้จากเมนูตั้งค่า */
+export type FunSettings = {
+  /** ตัวเลือกลอยไปลอยมา ต้องกดให้ทัน */
+  floatingChoices: boolean;
+  /** สลับลำดับตัวเลือกแบบสุ่ม แยกกันคนละแบบทุกคน */
+  shuffleChoices: boolean;
+  /** โจทย์เบลอตอนแรกแล้วค่อยๆ ชัดขึ้น ยิ่งอ่านออกเร็วยิ่งได้เปรียบ */
+  blurQuestion: boolean;
+  /** ตัวเลือกค่อยๆ หดเล็กลงตามเวลาที่เหลือ */
+  shrinkChoices: boolean;
+  /** บางข้อสุ่มพลิกเป็นภาพกระจก */
+  mirrorMode: boolean;
+  /** ข้อสุดท้ายคะแนนคูณสอง */
+  doubleTrouble: boolean;
+  /** คอนเฟตติเวลาตอบถูก */
+  confetti: boolean;
+};
 
 export type Question = {
   id: string;
@@ -104,6 +124,10 @@ export type QuizState = {
   firstCorrect: string | null;
   /** ผลรายคนของข้อนี้ — มีเฉพาะตอน phase === "reveal" */
   results: AnswerResult[];
+  /** โหมดกวนๆ ที่เปิดอยู่ (ส่งไปให้ทุกคนเห็นตรงกัน) */
+  fun: FunSettings;
+  /** ข้อนี้คะแนนคูณสองหรือไม่ */
+  doubled: boolean;
   scores: Score[];
 };
 

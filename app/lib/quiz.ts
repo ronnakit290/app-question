@@ -98,6 +98,15 @@ function results(): AnswerResult[] {
     .sort((a, b) => b.gained - a.gained || a.name.localeCompare(b.name));
 }
 
+/** ข้อนี้คะแนนคูณสองไหม (โหมด Double Trouble = ข้อสุดท้าย) */
+function isDoubled(): boolean {
+  return (
+    getAiSettings().fun.doubleTrouble &&
+    engine.questions.length > 1 &&
+    engine.index === engine.questions.length - 1
+  );
+}
+
 export function quizState(): QuizState {
   const q = engine.questions[engine.index];
   const reveal = engine.phase === "reveal";
@@ -120,6 +129,8 @@ export function quizState(): QuizState {
     expected: engine.expected.size,
     firstCorrect: engine.firstCorrect,
     results: reveal ? results() : [],
+    fun: getAiSettings().fun,
+    doubled: isDoubled(),
     scores: sortedScores(),
   };
 }
@@ -186,7 +197,11 @@ export function nextQuestion() {
     settings.secondsPerQuestion > 0 ? settings.secondsPerQuestion * 1000 : null;
   engine.endsAt = engine.durationMs ? Date.now() + engine.durationMs : null;
 
-  say(`ข้อ ${engine.index + 1}/${engine.questions.length} — ${q.text}`);
+  say(
+    `ข้อ ${engine.index + 1}/${engine.questions.length}${
+      isDoubled() ? " · คะแนนคูณสอง!" : ""
+    } — ${q.text}`,
+  );
   broadcast();
 
   if (engine.endsAt) schedule(engine.durationMs!, () => reveal("หมดเวลา"));
@@ -222,8 +237,9 @@ function commitScores(answer: number) {
     if (correct) {
       entry.streak += 1;
       const gained =
-        (engine.gains.get(clientId) ?? 0) +
-        Math.min(200, (entry.streak - 1) * 50);
+        ((engine.gains.get(clientId) ?? 0) +
+          Math.min(200, (entry.streak - 1) * 50)) *
+        (isDoubled() ? 2 : 1);
       entry.score += gained;
       engine.gains.set(clientId, gained);
     } else {
