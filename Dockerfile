@@ -18,7 +18,7 @@ COPY . .
 
 RUN bun run build
 
-FROM oven/bun:1-alpine AS runner
+FROM oven/bun:1.2-alpine AS runner
 
 ENV NODE_ENV=production \
     NEXT_TELEMETRY_DISABLED=1 \
