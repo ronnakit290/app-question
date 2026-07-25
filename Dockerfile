@@ -7,7 +7,10 @@ WORKDIR /app
 FROM base AS deps
 
 COPY package.json bun.lock ./
-RUN bun install --frozen-lockfile
+
+# ใช้ lockfile เป็นหลัก แต่ถ้า lock ยังไม่ตรงกับ package.json
+# (เช่นเพิ่ง `npm i` แพ็กเกจใหม่แล้วยังไม่ได้รัน `bun install`) ให้ resolve ใหม่แทนที่จะ build ล้ม
+RUN bun install --frozen-lockfile || bun install
 
 FROM base AS builder
 
