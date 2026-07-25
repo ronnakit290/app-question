@@ -1,7 +1,14 @@
 import { Database } from "bun:sqlite";
+import { mkdirSync } from "node:fs";
+import { dirname } from "node:path";
 import type { AiSettings, ChatMessage, Question, QuestionSet } from "./types";
 import { randomId } from "./uuid";
 
+/**
+ * ที่เก็บฐานข้อมูล — ใน Docker ชี้ไปที่ volume `/app/data` (ดู Dockerfile /
+ * docker-compose.yml) เพื่อให้ข้อความ ชุดคำถาม และการตั้งค่า AI อยู่ครบ
+ * แม้จะลบ container ทิ้งแล้วสร้างใหม่
+ */
 const DB_PATH = process.env.CHAT_DB_PATH ?? "chat.sqlite";
 
 type Row = {
@@ -16,6 +23,11 @@ type Row = {
 const globalForDb = globalThis as unknown as { __chatDb?: Database };
 
 function init(): Database {
+  // สร้างโฟลเดอร์ปลายทางให้ก่อน เผื่อ volume ถูก mount มาแบบว่างเปล่า
+  try {
+    mkdirSync(dirname(DB_PATH), { recursive: true });
+  } catch {}
+
   const db = new Database(DB_PATH, { create: true });
   db.run("PRAGMA journal_mode = WAL;");
   db.run(`

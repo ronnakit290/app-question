@@ -1,0 +1,25 @@
+services:
+  app:
+    build: .
+    image: app-question
+    container_name: app-question
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      # ไฟล์ sqlite อยู่ใน volume — ลบ container ทิ้งข้อมูลก็ยังอยู่
+      CHAT_DB_PATH: /app/data/chat.sqlite
+      # ตั้งค่าเริ่มต้นของ API Key ได้จากตรงนี้ (ยังแก้ทับได้ในเมนูตั้งค่า AI)
+      AI_API_KEY: ${AI_API_KEY:-}
+    volumes:
+      - app-question-data:/app/data
+    healthcheck:
+      test: ["CMD", "bun", "-e", "await fetch('http://127.0.0.1:3000/')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+volumes:
+  app-question-data:
+    name: app-question-data

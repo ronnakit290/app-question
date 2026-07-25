@@ -26,20 +26,54 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 ## Run with Docker
 
-Build and start the production image:
+```bash
+docker compose up -d --build
+```
+
+เปิด [http://localhost:3000](http://localhost:3000)
+
+ฐานข้อมูล sqlite ถูกเก็บใน **named volume** `app-question-data` ที่ mount ไว้ที่ `/app/data`
+ลบ/สร้าง container ใหม่ข้อมูลยังอยู่ครบ — ทั้งข้อความแชท ชุดคำถามที่ generate ไว้ และการตั้งค่า AI (รวม API Key)
+
+```bash
+docker compose down          # หยุด แต่ volume ยังอยู่
+docker compose down -v       # ลบ volume ด้วย = ล้างข้อมูลทั้งหมด
+docker volume inspect app-question-data
+```
+
+สำรอง / กู้คืนข้อมูล:
+
+```bash
+# backup
+docker run --rm -v app-question-data:/data -v "$PWD":/backup alpine \
+  tar czf /backup/app-question-data.tar.gz -C /data .
+
+# restore
+docker run --rm -v app-question-data:/data -v "$PWD":/backup alpine \
+  tar xzf /backup/app-question-data.tar.gz -C /data
+```
+
+ถ้าอยากใช้ `docker run` ตรงๆ แทน compose:
 
 ```bash
 docker build -t app-question .
-docker run --rm -p 3000:3000 app-question
+docker run -d --name app-question -p 3000:3000 \
+  -v app-question-data:/app/data app-question
 ```
 
-Open [http://localhost:3000](http://localhost:3000) after the container starts.
-
-The container stores the chat database in the `/app/data` volume:
+หรือจะ bind mount โฟลเดอร์บนเครื่องก็ได้ (ต้องให้ uid 1001 เขียนได้):
 
 ```bash
-docker run --rm -p 3000:3000 -v app-question-data:/app/data app-question
+mkdir -p ./data && sudo chown -R 1001:1001 ./data
+docker run -d -p 3000:3000 -v "$PWD/data":/app/data app-question
 ```
+
+ตัวแปรแวดล้อมที่เกี่ยวข้อง:
+
+| ตัวแปร | ค่าเริ่มต้น | ความหมาย |
+| --- | --- | --- |
+| `CHAT_DB_PATH` | `/app/data/chat.sqlite` (ใน Docker) | ที่อยู่ไฟล์ sqlite — โฟลเดอร์จะถูกสร้างให้อัตโนมัติ |
+| `AI_API_KEY` | – | API Key เริ่มต้น ใช้เมื่อยังไม่เคยตั้งค่าในแอป |
 
 ## Chat architecture
 
@@ -47,7 +81,7 @@ Single shared room, multiple participants:
 
 - `app/api/messages` — `GET` history (last 100), `POST` a new message
 - `app/api/stream` — SSE stream (`text/event-stream`) broadcasting `message` and `presence` events
-- `app/lib/db.ts` — persistence via `bun:sqlite` (`CHAT_DB_PATH`, defaults to `./chat.sqlite`)
+- `app/lib/db.ts` — persistence via `bun:sqlite` (`CHAT_DB_PATH`, defaults to `./chat.sqlite`, `/app/data/chat.sqlite` ใน Docker)
 - `app/lib/bus.ts` — in-process pub/sub connecting POST → all open streams
 
 Identity is client-side: the display name lives in `localStorage` (`chat:userName`) along with a
