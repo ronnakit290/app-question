@@ -2,6 +2,7 @@
 
 import { useSyncExternalStore } from "react";
 import type { QuizState } from "../lib/types";
+import MathText from "./MathText";
 import {
   Check,
   CircleCheck,
@@ -190,7 +191,7 @@ export default function QuizPanel({
         </div>
 
         <p className="display mb-5 text-[17px] leading-relaxed font-medium text-[var(--ink)]">
-          {q?.text}
+          <MathText>{q?.text ?? ""}</MathText>
         </p>
 
         <div className="grid gap-2 sm:grid-cols-2">
@@ -225,7 +226,9 @@ export default function QuizPanel({
                 >
                   {LETTERS[i]}
                 </span>
-                <span className="min-w-0 flex-1">{c}</span>
+                <span className="min-w-0 flex-1">
+                  <MathText>{c}</MathText>
+                </span>
                 {reveal && votes[i] > 0 && (
                   <span className="shrink-0 rounded-lg bg-black/10 px-1.5 py-0.5 text-[11px] font-semibold">
                     {votes[i]}
@@ -241,7 +244,9 @@ export default function QuizPanel({
           <div className="mt-4 rounded-xl border-l-2 border-[var(--good)] bg-[var(--good-soft)] px-4 py-3 text-sm leading-relaxed text-[var(--good)]">
             <span className="flex gap-2">
               <Lightbulb size={15} strokeWidth={1.75} className="mt-0.5 shrink-0" />
-              <span>{state.explain}</span>
+              <span>
+                <MathText>{state.explain}</MathText>
+              </span>
             </span>
           </div>
         )}

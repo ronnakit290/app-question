@@ -10,6 +10,7 @@ import QuizPanel from "./QuizPanel";
 import { useChat } from "../hooks/useChat";
 import { useViewportHeight } from "../hooks/useViewportHeight";
 import Scoreboard from "./Scoreboard";
+import MathText from "./MathText";
 import { QUIZ_BOT_ID } from "../lib/quiz-shared";
 import {
   Bot,
@@ -222,7 +223,9 @@ export default function Chat({
                         strokeWidth={1.75}
                         className="mt-0.5 shrink-0 text-[var(--gold)]"
                       />
-                      <span>{m.text}</span>
+                      <span>
+                        <MathText>{m.text}</MathText>
+                      </span>
                     </div>
                   </div>
                 );
@@ -256,7 +259,9 @@ export default function Chat({
                         {m.name}
                       </div>
                     )}
-                    <p className="whitespace-pre-wrap break-words">{m.text}</p>
+                    <p className="whitespace-pre-wrap break-words">
+                      <MathText>{m.text}</MathText>
+                    </p>
                     <div
                       className={`mt-1 text-[10px] ${
                         mine ? "text-white/70" : "text-[var(--faint)]"

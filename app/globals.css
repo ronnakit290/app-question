@@ -303,3 +303,26 @@ body {
     animation: none;
   }
 }
+
+/* ---------- สูตรคณิต (KaTeX) ---------- */
+
+.katex {
+  font-size: 1.02em;
+}
+.katex-display {
+  margin: 0.6em 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 2px;
+}
+/* บนพื้นเข้ม (บับเบิลของเรา / ตัวเลือกที่เฉลย) ให้สูตรเป็นสีเดียวกับข้อความ */
+.katex,
+.katex .mord,
+.katex .mbin,
+.katex .mrel,
+.katex .mopen,
+.katex .mclose,
+.katex .mpunct,
+.katex .minner {
+  color: inherit;
+}
