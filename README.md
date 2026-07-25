@@ -2,16 +2,22 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 ## Getting Started
 
-First, run the development server:
+This project uses [Bun](https://bun.sh) as its package manager and runtime.
+
+Install dependencies and run the development server:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
+bun install
 bun dev
+```
+
+Other scripts:
+
+```bash
+bun run build      # production build
+bun start          # serve the production build
+bun run lint       # eslint
+bun run typecheck  # tsc --noEmit
 ```
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
@@ -29,7 +35,28 @@ docker run --rm -p 3000:3000 app-question
 
 Open [http://localhost:3000](http://localhost:3000) after the container starts.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+The container stores the chat database in the `/app/data` volume:
+
+```bash
+docker run --rm -p 3000:3000 -v app-question-data:/app/data app-question
+```
+
+## Chat architecture
+
+Single shared room, multiple participants:
+
+- `app/api/messages` — `GET` history (last 100), `POST` a new message
+- `app/api/stream` — SSE stream (`text/event-stream`) broadcasting `message` and `presence` events
+- `app/lib/db.ts` — persistence via `bun:sqlite` (`CHAT_DB_PATH`, defaults to `./chat.sqlite`)
+- `app/lib/bus.ts` — in-process pub/sub connecting POST → all open streams
+
+Identity is client-side: the display name lives in `localStorage` (`chat:userName`) along with a
+stable `chat:clientId` used to tell participants apart even when they pick the same name.
+
+Because the pub/sub hub is in-process, run a **single instance**. Scaling horizontally would
+require an external broker (Redis pub/sub, Postgres LISTEN/NOTIFY, etc.).
+
+Fonts are loaded via [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) (Noto Sans Thai).
 
 ## Learn More
 

@@ -11,3 +11,5 @@ build
 Dockerfile*
 docker-compose*.yml
 README.md
+chat.sqlite*
+data
